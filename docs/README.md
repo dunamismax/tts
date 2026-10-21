@@ -5,7 +5,7 @@ setup was chosen, in the order it happened.
 
 | Document | What's in it |
 |---|---|
-| [how-it-works.md](how-it-works.md) | The pipeline: import, normalization, chunking, QA, caching, mastering, export |
+| [how-it-works.md](how-it-works.md) | The pipeline (import, normalization, chunking, QA, caching, mastering, export) and the web studio |
 | [setup.md](setup.md) | Rebuilding the environment, pinned versions, model downloads |
 | [model-research.md](model-research.md) | First round: MOSS-TTS v1.5 (8B and Local) vs Qwen3-TTS, API facts from the mlx-audio source and model cards |
 | [benchmarks.md](benchmarks.md) | Speed, memory and swap per model on this Mac, including the rejected bf16 MOSS 8B |
@@ -25,4 +25,5 @@ setup was chosen, in the order it happened.
 | Chunks | Paragraphs, at most 500 characters, never mid-sentence | See chunk-length.md |
 | QA | Whisper large-v3-turbo, WER > 8% or abnormal pace → up to 3 retries | Catches skips, repeats, garbles |
 | Mastering | RMS −20 dB, peaks ≤ −3.5 dB, −70 dB room tone, 44.1 kHz mono | ACX specs with margin |
+| Interface | Local web studio (FastAPI + plain JS) over the CLI engine | No Terminal needed; offline; one narration at a time |
 | Rejected | MOSS-TTS 8B bf16 | 25 GB peak, heavy swapping, RTF 3.3 |

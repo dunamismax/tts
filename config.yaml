@@ -25,6 +25,8 @@ text:
   expand_abbreviations: true  # "Mr." -> "Mister", "e.g." -> "for example"
   american_numbers: true      # "two hundred fifty" (true) or "two hundred and fifty" (false)
 
+speak_titles: true            # read each chapter title aloud before the chapter
+
 chunking:
   max_chars: 500              # longest piece sent to the model at once; never splits a sentence
 

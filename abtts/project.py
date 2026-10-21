@@ -211,7 +211,9 @@ def build_plan(project: Path, settings: dict, chapters_wanted: list[int] | None 
         if chapters_wanted and ch["number"] not in chapters_wanted:
             continue
         title = spoken_title(ch["title"])
-        items = [Chunk(ch["number"], 0, tts(title), tts(title, False), pauses["after_title"])]
+        items = []
+        if settings.get("speak_titles", True):
+            items.append(Chunk(ch["number"], 0, tts(title), tts(title, False), pauses["after_title"]))
         for para in ch["paragraphs"]:
             pieces = chunk_paragraph(tts(para), settings["chunking"]["max_chars"])
             original = tts(para, False)
@@ -285,7 +287,11 @@ def fmt_duration(seconds: float) -> str:
     return f"{h}h {m:02d}m" if h else f"{m}m {s:02d}s"
 
 
-def generate(project: Path, plan: list[Chunk], settings: dict, log=print) -> dict:
+def _noop(_event: dict):
+    pass
+
+
+def generate(project: Path, plan: list[Chunk], settings: dict, log=print, event=_noop) -> dict:
     """Generate every uncached chunk. Safe to interrupt; finished chunks stay cached."""
     todo = [c for c in plan if not is_cached(project, c)]
     total_chars = sum(len(c.text) for c in plan)
@@ -293,6 +299,8 @@ def generate(project: Path, plan: list[Chunk], settings: dict, log=print) -> dic
     stats = {"generated": 0, "flagged": 0, "gen_seconds": 0.0, "audio_seconds": 0.0}
     log(f"{len(plan)} chunks in plan, {len(plan) - len(todo)} already done, {len(todo)} to generate "
         f"({todo_chars:,} of {total_chars:,} characters).")
+    event({"type": "plan", "chunks": len(plan), "done": len(plan) - len(todo), "todo": len(todo),
+           "chars": total_chars, "todo_chars": todo_chars})
     if not todo:
         return stats
 
@@ -312,10 +320,12 @@ def generate(project: Path, plan: list[Chunk], settings: dict, log=print) -> dic
     pace = PaceTracker(done_cps[-200:])
 
     log(f"Loading {settings['model']} ...")
+    event({"type": "loading"})
     engine.load()
     start = time.time()
     done_chars = 0
     for n, chunk in enumerate(todo, 1):
+        event({"type": "chunk_start", "id": chunk.id, "n": n, "todo": len(todo), "text": chunk.text[:160]})
         try:
             best, takes = render_chunk(engine, chunk.text, seed=settings["seed"] + chunk.seed_offset * 104729,
                                        stt=stt, qa=qa, pace=pace, alt_references=[chunk.original])
@@ -334,6 +344,10 @@ def generate(project: Path, plan: list[Chunk], settings: dict, log=print) -> dic
         eta = dt.datetime.now() + dt.timedelta(seconds=remaining)
         note = f"  FLAGGED: {'; '.join(best.problems)}" if best.problems else ""
         retry = f" ({len(takes)} takes)" if len(takes) > 1 else ""
+        event({"type": "chunk", "id": chunk.id, "n": n, "todo": len(todo), "seconds": round(best.seconds, 1),
+               "takes": len(takes), "problems": best.problems, "pct": round(100 * done_chars / todo_chars, 2),
+               "eta_seconds": round(remaining), "eta_clock": f"{eta:%a %H:%M}",
+               "overall_done": len(plan) - len(todo) + n, "overall_total": len(plan)})
         log(f"[{n}/{len(todo)}] {chunk.id} {best.seconds:5.1f}s audio{retry} | "
             f"{100 * done_chars / todo_chars:5.1f}% | {fmt_duration(remaining)} left, "
             f"done about {eta:%a %H:%M}{note}")
@@ -362,7 +376,8 @@ def output_name(number: int, title: str) -> str:
     return f"{number:02d} - {clean}"
 
 
-def assemble(project: Path, plan: list[Chunk], settings: dict, log=print, out_dir: Path | None = None) -> list[dict]:
+def assemble(project: Path, plan: list[Chunk], settings: dict, log=print, out_dir: Path | None = None,
+             event=_noop) -> list[dict]:
     """Master and export every chapter whose chunks are all generated."""
     meta = yaml.safe_load((project / "book.yaml").read_text())
     titles = {c["number"]: c["title"] for c in read_chapters(project)}
@@ -380,6 +395,7 @@ def assemble(project: Path, plan: list[Chunk], settings: dict, log=print, out_di
         if wav_out.exists() and mp3_out.exists() and man_path.exists() and json.loads(man_path.read_text()) == manifest:
             results.append(json.loads((out_dir / "wav" / f".{number:02d}.measure.json").read_text()))
             continue
+        event({"type": "mastering", "chapter": number})
         joined = chapter_audio(project, chunks)
         if joined is None:
             missing = sum(not is_cached(project, c) for c in chunks)
@@ -404,6 +420,7 @@ def assemble(project: Path, plan: list[Chunk], settings: dict, log=print, out_di
                   "mp3_acx": A.acx_measure(mp3_out), "seconds": measured["seconds"]}
         (out_dir / "wav" / f".{number:02d}.measure.json").write_text(json.dumps(result, indent=2))
         man_path.write_text(json.dumps(manifest))
+        event({"type": "chapter", "chapter": number, "acx_pass": result["acx_pass"], "mp3": str(mp3_out)})
         log(f"Chapter {number} mastered: RMS {measured['rms_db']} dB, peak {measured['peak_db']} dB, "
             f"noise floor {measured['noise_floor_db']} dB ({'ACX pass' if result['acx_pass'] else 'ACX FAIL'})")
         results.append(result)
@@ -446,7 +463,7 @@ def make_m4b(project: Path, chapters: list[dict], settings: dict, log=print) -> 
              "-ac", "1", "-ar", "44100", "-movflags", "+faststart", "-f", "mp4", str(tmp)]
     A.ffmpeg(*args)
     tmp.replace(out)
-    log(f"M4B written: {out} ({fmt_duration(pos / 1000)}, {len(chapters)} chapters)")
+    log(f"M4B written: {out} ({fmt_duration(pos / 1000)}, {len(chapters)} chapter{'s' if len(chapters) != 1 else ''})")
     return out
 
 

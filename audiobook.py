@@ -8,6 +8,8 @@
   ./audiobook.py status PROJECT
   ./audiobook.py redo PROJECT 03-012 [04-007 ...]
   ./audiobook.py chapters BOOK                  show detected chapters without importing
+  ./audiobook.py say "Some text" --out hello.mp3
+  ./audiobook.py web                            open the web interface
   ./audiobook.py voice add CLIP.wav --name me --transcript "exact words"
   ./audiobook.py voice list
 
@@ -42,6 +44,7 @@ logging.getLogger("transformers").setLevel(logging.ERROR)
 sys.path.insert(0, str(ROOT))
 
 import datetime as dt  # noqa: E402
+import json  # noqa: E402
 
 import yaml  # noqa: E402
 
@@ -51,8 +54,15 @@ from abtts.voice import prepare_voice  # noqa: E402
 
 
 class Log:
+    """Prints progress for people, plus one JSON line per event when AUDIOBOOK_EVENTS=1 (web app)."""
+
     def __init__(self, project: Path | None = None):
         self.file = (project / "run.log").open("a", encoding="utf-8") if project else None
+        self.events = os.environ.get("AUDIOBOOK_EVENTS") == "1"
+
+    def event(self, evt: dict):
+        if self.events:
+            print("@@EVENT " + json.dumps(evt), flush=True)
 
     def __call__(self, msg: str):
         print(msg, flush=True)
@@ -91,16 +101,18 @@ def run_pipeline(project: Path, args, chapters: list[int] | None = None, preview
         if not plan:
             log("Nothing to do: no matching chapters.")
             return
-        stats = P.generate(project, plan, settings, log=log)
+        stats = P.generate(project, plan, settings, log=log, event=log.event)
         out_dir = project / "output" / "preview" if preview else None
-        results = P.assemble(project, plan, settings, log=log, out_dir=out_dir)
+        results = P.assemble(project, plan, settings, log=log, out_dir=out_dir, event=log.event)
         m4b = None
         full_plan = P.build_plan(project, settings)
         if not preview and (not chapters or rebuild_book):
             if chapters:  # only rebuild the book file if every chapter is finished
                 results = P.assemble(project, full_plan, settings, log=log) if all(
                     P.is_cached(project, c) for c in full_plan) else []
-            m4b = P.make_m4b(project, results, settings, log=log) if results else None
+            if results:
+                log.event({"type": "m4b_start"})
+                m4b = P.make_m4b(project, results, settings, log=log)
         whole = not chapters or (rebuild_book and m4b)
         report = P.write_report(project, full_plan if whole else plan, results, settings, stats, m4b,
                                 path=project / "output" / "preview" / "report.md" if preview else None)
@@ -115,6 +127,8 @@ def run_pipeline(project: Path, args, chapters: list[int] | None = None, preview
             log(f"Chapter MP3s: {project / 'output' / 'mp3'}")
         if flagged:
             log(f"{flagged} chunk(s) flagged for a listen; see the report.")
+        log.event({"type": "done", "flagged": flagged, "m4b": str(m4b) if m4b else None,
+                   "previews": [r["mp3"] for r in results if r.get("complete")] if preview else []})
     except KeyboardInterrupt:
         log("Stopped. Everything finished so far is saved; run the same command again to resume.")
         sys.exit(130)
@@ -185,6 +199,54 @@ def cmd_redo(args):
     run_pipeline(project, args, sorted(chapters), rebuild_book=True)
 
 
+def cmd_say(args):
+    """Speak a short text straight to an audio file (for trying voices and pronunciations)."""
+    import numpy as np
+    import soundfile as sf
+
+    from abtts import audio as A
+    from abtts.chunking import chunk_paragraph
+    from abtts.engines import Engine
+    from abtts.render import trim_edges
+    from abtts.textnorm import normalize_for_tts
+
+    log = Log()
+    settings = P.load_settings(None, overrides(args))
+    text = args.text if args.text != "-" else sys.stdin.read()
+    pron = P.load_pronunciations(P.find_project(args.project) if args.project else None)
+    t = settings["text"]
+    paragraphs = [p for p in text.split("\n\n") if p.strip()]
+    voice, _ = P.voice_spec(settings)
+    engine = Engine(settings["model"], voice=voice, sampling=dict(settings["sampling"]), language=settings["language"])
+    log.event({"type": "loading"})
+    engine.load()
+    pieces, sr = [], 24000
+    chunks = [c for p in paragraphs for c in chunk_paragraph(
+        normalize_for_tts(p, numbers=t["expand_numbers"], abbreviations=t["expand_abbreviations"],
+                          american=t["american_numbers"], pronunciations=pron), settings["chunking"]["max_chars"])]
+    for n, c in enumerate(chunks, 1):
+        audio, sr = engine.synth(c, seed=settings["seed"])
+        pieces += [trim_edges(audio, sr), A.silence(settings["pauses"]["paragraph"], sr)]
+        log.event({"type": "chunk", "n": n, "todo": len(chunks), "pct": round(100 * n / len(chunks), 1)})
+    out = Path(args.out).expanduser()
+    out.parent.mkdir(parents=True, exist_ok=True)
+    raw = out.with_suffix(".raw.wav")
+    sf.write(str(raw), np.concatenate(pieces[:-1]) if pieces else np.zeros(sr, dtype="float32"), sr, subtype="FLOAT")
+    A.master_acx(raw, out.with_suffix(".wav"), head_s=0.2, tail_s=0.4, target_rms_db=settings["mastering"]["target_rms_db"])
+    raw.unlink()
+    if out.suffix.lower() == ".mp3":
+        A.ffmpeg("-i", str(out.with_suffix(".wav")), "-c:a", "libmp3lame", "-b:a", "192k", str(out))
+        out.with_suffix(".wav").unlink()
+    log(f"Saved: {out}")
+    log.event({"type": "done", "file": str(out)})
+
+
+def cmd_web(args):
+    from webapp.server import main as serve
+
+    serve(port=args.port, open_browser=not args.no_browser)
+
+
 def cmd_chapters(args):
     book = read_book(Path(args.book))
     print(f"{book.title} by {book.author}: {len(book.chapters)} chapters")
@@ -252,6 +314,18 @@ def main():
     p.add_argument("ids", nargs="+", help="chunk IDs like 03-012 (from report.md)")
     gen_opts(p)
     p.set_defaults(func=cmd_redo)
+
+    p = sub.add_parser("say", help="speak a short text to an audio file")
+    p.add_argument("text", help='the text, or "-" to read it from standard input')
+    p.add_argument("--out", default=str(ROOT / "output" / "say.mp3"), help="output .mp3 or .wav")
+    p.add_argument("--project", help="also use this book's pronunciations.yaml")
+    gen_opts(p)
+    p.set_defaults(func=cmd_say)
+
+    p = sub.add_parser("web", help="open the web interface (Audiobook Studio)")
+    p.add_argument("--port", type=int, default=8765)
+    p.add_argument("--no-browser", action="store_true", help="don't open a browser window")
+    p.set_defaults(func=cmd_web)
 
     p = sub.add_parser("chapters", help="list chapters a book file would be split into")
     p.add_argument("book")

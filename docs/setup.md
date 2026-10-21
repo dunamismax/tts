@@ -33,6 +33,9 @@ CustomVoice and VoiceDesign (bf16), plus Whisper large-v3-turbo for quality chec
 | num2words | 0.5.14 | Number expansion |
 | pyyaml | 6.0.3 | Config files |
 | soundfile | 0.14.0 | WAV I/O |
+| fastapi | 0.157.0 | Web studio API |
+| uvicorn | 0.54.0 | Web studio server |
+| python-multipart | 0.0.32 | File uploads in the studio |
 
 All transitive versions are locked in `uv.lock`.
 

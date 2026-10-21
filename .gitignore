@@ -27,3 +27,6 @@ voices/*
 !voices/designfemale/
 voices/*/ref_48k_stereo.wav
 !voices/*/ref_24k_mono.wav
+
+# Local tool config
+.claude/

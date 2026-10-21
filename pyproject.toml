@@ -7,12 +7,15 @@ requires-python = "==3.12.*"
 dependencies = [
     "beautifulsoup4==4.15.0",
     "ebooklib==0.20",
+    "fastapi==0.157.0",
     "jiwer==4.0.0",
     "mlx-audio==0.6.1",
     "num2words==0.5.14",
     "pymupdf==2.0",
+    "python-multipart==0.0.32",
     "pyyaml==6.0.3",
     "soundfile==0.14.0",
+    "uvicorn==0.54.0",
 ]
 
 [tool.uv]

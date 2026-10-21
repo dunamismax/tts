@@ -11,7 +11,9 @@ programmer and uses it through `README.md`.
 
 ## Layout
 
-- `audiobook.py`: the command-line tool (re-launches itself in `.venv`)
+- `Audiobook Studio.command`: double-click launcher for the web studio (the primary interface)
+- `webapp/`: the web studio. `server.py` (FastAPI, job queue) and `static/` (plain HTML/CSS/JS, no build, offline)
+- `audiobook.py`: the command-line tool (re-launches itself in `.venv`); the studio runs it as a subprocess
 - `abtts/`: library code
   - `books.py` import and cleanup, `textnorm.py` number/abbreviation expansion,
     `chunking.py` sentence-safe chunks, `engines.py` mlx-audio wrappers, `render.py` QA retries,
@@ -48,6 +50,9 @@ programmer and uses it through `README.md`.
    `project.build_plan`, or bump `CACHE_VERSION`. Otherwise resumed books mix old and new audio.
 9. **Only clone voices the user owns or has permission to use.**
 10. Keep `README.md` written for a non-programmer. Put technical detail in `docs/`.
+11. **The web studio is the primary interface.** New features go into both the CLI (the engine)
+    and the studio. Keep the studio offline (no CDNs or web fonts), bound to 127.0.0.1, with the
+    `X-Studio` header check on every non-GET route, and build DOM with `textContent` only.
 
 ## Common commands
 
@@ -57,6 +62,7 @@ uv run python scripts/download_models.py core        # fetch model weights (~15 
 ./audiobook.py chapters books/some-book.epub         # check import without creating a project
 ./audiobook.py preview books/some-book.epub --chapter 1
 ./audiobook.py make books/some-book.epub
+./audiobook.py web                                   # the studio at http://127.0.0.1:8765
 ```
 
 Quick end-to-end check after code changes: `./audiobook.py make samples/smoke-test.md`

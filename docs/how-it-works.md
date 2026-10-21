@@ -1,6 +1,8 @@
 # How it works
 
-`audiobook.py` is a thin command-line front end over the `abtts/` package.
+Two front ends share one engine (the `abtts/` package): the web studio (`webapp/`) and the
+command line (`audiobook.py`). The studio runs every narration as an `audiobook.py` subprocess,
+so both behave identically.
 
 ```
 book file ──► import (books.py) ──► chapters/NN.txt (editable)
@@ -116,3 +118,36 @@ title/author/genre tags and cover art.
 
 Qwen3-TTS 1.7B bf16 plus Whisper turbo peak at about 11–13 GB of MLX memory. Measured speed
 with QA is about 0.85× real time on the M5 (10-core GPU), so a 10-hour book takes about 8.5 hours.
+
+## Web studio (`webapp/`)
+
+- `webapp/server.py`: FastAPI app served by uvicorn on **127.0.0.1:8765** only. Started by
+  `./audiobook.py web` or the `Audiobook Studio.command` launcher.
+- **Job queue**: one worker thread runs one job at a time (`render`, `preview`, `redo`, `say`) as
+  an `audiobook.py` subprocess with `AUDIOBOOK_EVENTS=1`. The CLI then prints `@@EVENT {json}`
+  lines (plan, loading, chunk_start, chunk, mastering, chapter, m4b_start, done), which the server
+  turns into live progress. Pause sends SIGINT; the CLI saves and exits cleanly (cached chunks are
+  written atomically), and resume is just another `render`.
+- **State on disk only**: the library is `projects/*/book.yaml` plus the chunk cache. The server
+  caches each book's plan by file modification times so polling stays cheap on long books.
+- **Safety**: requests whose Host isn't localhost are refused (DNS rebinding), and every
+  non-GET request must carry `X-Studio: 1` (a cross-site page can't add custom headers without a
+  CORS preflight, which the server never grants). Book slugs and chapter file names are validated;
+  media is served only from `projects/`, `voices/` and `output/web-say/`.
+- **Nothing is deleted**: edited chapters are copied to `chapters/history/` first, skipped
+  chapters move to `chapters/skipped/`, removed books move to `projects/_archived/`, and
+  `pronunciations.yaml` is copied to `logs/pronunciations-history/` before each save.
+  `config.yaml` is edited line by line so its comments and alignment survive.
+- **Front end**: `webapp/static/` (plain HTML, CSS and JavaScript; no build step, no CDN, works
+  offline). Hash routes: library, book, voices, pronunciations, settings. All page text is set
+  with `textContent`, never `innerHTML`, so book text can't inject markup. Light and dark follow
+  the system setting.
+- Uploads go to `books/uploads/`, pasted text to `books/pasted/`, quick-listen audio to
+  `output/web-say/` (all git-ignored).
+
+API summary: `GET /api/state`, `GET /api/jobs`, `POST /api/jobs/{id}/cancel`,
+`POST /api/projects/upload`, `POST /api/projects/text`, `GET|PATCH /api/projects/{slug}`,
+`POST /api/projects/{slug}/render|preview|redo|archive|reveal`,
+`GET|PUT /api/projects/{slug}/chapters/{NN.txt}`, `POST …/chapters/{NN.txt}/skip|restore`,
+`POST /api/say`, `GET|POST /api/voices`, `POST /api/voices/default`,
+`GET|PUT /api/pronunciations`, `GET|PUT /api/settings`.
