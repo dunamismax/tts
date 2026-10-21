@@ -157,6 +157,16 @@ def expand_numbers(text: str, american: bool = True) -> str:
     return re.sub(r"[ \t]{2,}", " ", text)
 
 
+def soften_caps(text: str) -> str:
+    """ALL-CAPS words of 5+ letters read as shouting or get spelled out; acronyms are shorter."""
+    if text.isupper() and len(text) > 12:
+        return text[0] + text[1:].lower()
+    # Runs of two or more capitalized words are shouted phrases: read them normally.
+    text = re.sub(r"\b[A-Z][A-Z']+(?:\s+[A-Z][A-Z']+)+\b",
+                  lambda m: m.group(0).lower() if any(len(w) >= 3 for w in m.group(0).split()) else m.group(0), text)
+    return re.sub(r"\b[A-Z]{5,}\b", lambda m: m.group(0).capitalize(), text)
+
+
 def expand_abbreviations(text: str) -> str:
     for pattern, repl in ABBREVIATIONS.items():
         text = re.sub(pattern, repl, text)
@@ -173,7 +183,7 @@ def apply_pronunciations(text: str, pronunciations: dict[str, str]) -> str:
 
 def normalize_for_tts(text: str, *, numbers: bool = True, abbreviations: bool = True,
                       american: bool = True, pronunciations: dict[str, str] | None = None) -> str:
-    text = normalize_quotes_dashes(text)
+    text = soften_caps(normalize_quotes_dashes(text))
     if pronunciations:
         text = apply_pronunciations(text, pronunciations)
     if abbreviations:

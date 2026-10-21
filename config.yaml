@@ -1,0 +1,48 @@
+# Audiobook settings. Chosen by listening test on 2026-10-21: candidate F1.
+# A book can override any of these in its own projects/<book>/book.yaml under "settings:".
+
+# Speech model (Qwen3-TTS 1.7B Base, full precision, clones the voice below).
+model: mlx-community/Qwen3-TTS-12Hz-1.7B-Base-bf16
+language: English
+
+# Narrator voice: a folder name inside voices/ (made with `audiobook.py voice add`).
+voice: designmale
+
+# Sampling. These match the model card except temperature, which you picked by ear.
+sampling:
+  temperature: 0.9
+  top_k: 50
+  top_p: 1.0
+  repetition_penalty: 1.05
+
+# The same seed is used for every chunk so the narrator stays consistent.
+seed: 20261021
+
+text:
+  expand_numbers: true        # "1923" -> "nineteen twenty-three", "£250" -> "two hundred fifty pounds"
+  expand_abbreviations: true  # "Mr." -> "Mister", "e.g." -> "for example"
+  american_numbers: true      # "two hundred fifty" (true) or "two hundred and fifty" (false)
+
+chunking:
+  max_chars: 500              # longest piece sent to the model at once; never splits a sentence
+
+pauses:                       # seconds of silence
+  sentence: 0.35              # between chunks inside one paragraph
+  paragraph: 0.7
+  after_title: 1.75
+
+qa:
+  enabled: true
+  wer_threshold: 0.08         # regenerate a chunk when more than 8% of its words are wrong
+  max_retries: 3
+  pace_low: 0.6               # flag chunks spoken far slower than usual (long silence, repeats)
+  pace_high: 1.6              # or far faster than usual (skipped words)
+
+mastering:                    # ACX: RMS -23..-18 dB, peaks <= -3 dB, noise floor <= -60 dB
+  target_rms_db: -20
+  head_seconds: 0.75          # room tone at the start of each chapter (ACX: 0.5-1 s)
+  tail_seconds: 2.0           # room tone at the end of each chapter (ACX: 1-5 s)
+
+output:
+  mp3_bitrate: 192k
+  m4b_bitrate: 128k
