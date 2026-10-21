@@ -19,8 +19,8 @@ setup was chosen, in the order it happened.
 | Decision | Choice | Why |
 |---|---|---|
 | Model | Qwen3-TTS-12Hz-1.7B-Base, bf16 (mlx-community) | Sounded clearly better than MOSS-TTS v1.5 to the user; largest Qwen3-TTS |
-| Voice | `designmale` reference clip, cloned | User's pick (F1) |
-| Temperature | 0.9 (model card default) | User's pick (F1) |
+| Voice | `britishmale` reference clip, cloned | User's pick: refined British (RP) male, smooth and mellow (replaced `designmale`, the F1 voice) |
+| Temperature | 0.9 (model card default) | User's pick (F1); kept with the new voice |
 | Text | Numbers, dates, money, abbreviations spelled out | Fixes preset voices, harmless for clones |
 | Chunks | Paragraphs, at most 500 characters, never mid-sentence | See chunk-length.md |
 | QA | Whisper large-v3-turbo, WER > 8% or abnormal pace → up to 3 retries | Catches skips, repeats, garbles |

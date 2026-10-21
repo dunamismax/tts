@@ -1,4 +1,4 @@
-# Audiobook settings. Chosen by listening test on 2026-10-21: candidate F1.
+# Audiobook settings. Voice: britishmale, the narrator you chose (2026-10-21).
 # A book can override any of these in its own projects/<book>/book.yaml under "settings:".
 
 # Speech model (Qwen3-TTS 1.7B Base, full precision, clones the voice below).
@@ -8,9 +8,9 @@ language: English
 # Narrator voice: a folder name inside voices/ (see `audiobook.py voice list`), or a
 # Qwen3 built-in speaker written as preset:Ryan or preset:Aiden (the right model is
 # then picked automatically).
-voice: designmale
+voice: britishmale
 
-# Sampling: the model card defaults. Temperature 0.9 is what you picked by ear (candidate F1).
+# Sampling: the model card defaults (temperature 0.9, also what you picked by ear).
 sampling:
   temperature: 0.9
   top_k: 50

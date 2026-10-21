@@ -9,8 +9,9 @@ You get:
 - a short list of the few spots, if any, worth a listen
 
 The audio meets Audible/ACX technical specs (loudness, peaks, background noise, 44.1 kHz mono).
-The narrator is **Qwen3-TTS** (1.7B, full precision) with the voice you picked in the listening
-test (`designmale`).
+The narrator is **Qwen3-TTS** (1.7B, full precision) reading in **British Male**
+(`britishmale`): a refined British (RP) voice in his fifties, smooth, mellow and intimate.
+That's the voice you chose.
 
 ---
 
@@ -105,8 +106,8 @@ default** for new books. Each book can also have its own voice: on the book's pa
 settings**. There you can also set **Liveliness** (steadier ↔ livelier reading) and whether chapter
 titles are read aloud, and press **Hear a sample** to check.
 
-- `designmale` (your pick), `deepbaritone`, `britishmale`, `warmfemale`, `designfemale`: narrator
-  voices designed for this project
+- `britishmale` (your pick, the default), `designmale`, `deepbaritone`, `warmfemale`,
+  `designfemale`: narrator voices designed for this project
 - **Ryan** and **Aiden**: Qwen3's built-in speakers
 
 **Your own voice**, or one you have permission to use: on the Voices page, drop a clip into **Add

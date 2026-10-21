@@ -41,8 +41,9 @@ programmer and uses it through `README.md`.
 5. **Do not guess APIs.** Read the installed mlx-audio source
    (`.venv/lib/python3.12/site-packages/mlx_audio/tts/models/qwen3_tts/`) and the model cards
    before changing generation code. Record what you learn in `docs/`.
-6. **Model choice.** The workflow uses Qwen3-TTS 1.7B Base (bf16) with the `designmale` voice
-   at temperature 0.9, chosen by ear by the user (candidate F1, `docs/final-candidates.md`).
+6. **Model and voice.** The workflow uses Qwen3-TTS 1.7B Base (bf16) with the `britishmale` voice
+   at temperature 0.9. The user chose the model by ear (`docs/final-candidates.md`) and later made
+   `britishmale` the default and headline voice (it replaced `designmale`).
    MOSS-TTS was rejected; don't reintroduce it without asking. The Mac has 32 GB; MLX's
    working-set limit is about 26.8 GB.
 7. **Pronunciations** are plain-English respellings with CAPITALIZED stress; Qwen3 does not read IPA.

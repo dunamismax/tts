@@ -1,6 +1,7 @@
 # Final voice candidates
 
-**Chosen: F1** (`designmale`, temperature 0.9), now the default in `config.yaml`.
+**Chosen: F1** (`designmale`, temperature 0.9). **Update:** the user later switched the default
+voice to `britishmale` (F5's voice), keeping temperature 0.9.
 
 Rendered 2026-10-21 by `scripts/finals.py` through the full production pipeline. Audio is in
 `~/AudiobookTTS/ab_test/finals/` (MP3 for listening, mastered WAV alongside; not in git).
