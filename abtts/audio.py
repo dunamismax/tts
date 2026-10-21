@@ -80,46 +80,57 @@ def acx_pass(m: dict) -> bool:
     return -23.0 <= m["rms_db"] <= -18.0 and m["peak_db"] <= -3.0 and m["noise_floor_db"] <= -60.0
 
 
+ROOM_TONE_DB = -70.0  # ACX wants the noise floor at or below -60 dB
+LIMIT_DBFS = -3.5  # ACX wants peaks at or below -3 dB
+
+
+def room_tone(n: int, sr: int, level_db: float = ROOM_TONE_DB, seed: int = 7) -> np.ndarray:
+    """Faint, steady pink noise. ACX reviewers reject pure digital silence as unnatural."""
+    rng = np.random.default_rng(seed)
+    white = rng.standard_normal(n + sr)
+    spectrum = np.fft.rfft(white)
+    freqs = np.fft.rfftfreq(white.size, 1 / sr)
+    spectrum[1:] /= np.sqrt(freqs[1:])
+    spectrum[0] = 0
+    pink = np.fft.irfft(spectrum, white.size)[:n]
+    pink /= np.sqrt(np.mean(pink**2)) + 1e-12
+    return (pink * 10 ** (level_db / 20)).astype(np.float64)
+
+
 def master_acx(src: Path, dst: Path, head_s: float, tail_s: float, target_rms_db: float = -20.0) -> dict:
     """Master one chapter WAV to ACX specs and return the measured values.
 
-    Steps: 44.1 kHz mono, gentle 70 Hz high-pass, a downward expander that pushes
-    breaths-between-words hiss under -60 dB, gain to the RMS target, then a true-peak
-    limiter at -3.5 dBFS so peaks stay under -3 dB. Room tone is digital near-silence
-    padded at both ends.
+    Steps: 44.1 kHz mono with a gentle 70 Hz high-pass, gain so the overall RMS lands
+    on target_rms_db, a look-ahead limiter at -3.5 dBFS, then head/tail padding and
+    a -70 dB pink-noise room tone under everything. Output is 16-bit 44.1 kHz mono.
     """
+    sr = 44100
     tmp = dst.with_suffix(".stage1.wav")
     ffmpeg(
         "-i", str(src),
-        "-af",
-        "aresample=44100:resampler=soxr,aformat=channel_layouts=mono,"
-        "highpass=f=70,"
-        "agate=threshold=0.003:ratio=3:range=0.0316:attack=5:release=150",
-        "-ar", "44100", "-ac", "1", "-c:a", "pcm_f32le", str(tmp),
+        "-af", "aresample=44100:filter_size=64:cutoff=0.98,highpass=f=70",
+        "-ar", str(sr), "-ac", "1", "-c:a", "pcm_f32le", str(tmp),
     )
-    current = acx_measure(tmp)["rms_db"]
-    gain = target_rms_db - current
-    ffmpeg(
-        "-i", str(tmp),
-        "-af",
-        f"volume={gain:.2f}dB,"
-        "alimiter=limit=0.668:attack=5:release=50:level=disabled,"
-        f"adelay={int(head_s * 1000)}:all=1,apad=pad_dur={tail_s}",
-        "-ar", "44100", "-ac", "1", "-c:a", "pcm_s16le", str(dst),
-    )
-    tmp.unlink(missing_ok=True)
-    measured = acx_measure(dst)
-    # A second, small trim if limiting pulled the RMS below the window.
-    if not -23.0 <= measured["rms_db"] <= -18.0:
-        fix = dst.with_suffix(".fix.wav")
+    gain = 0.0
+    for _ in range(3):  # limiting lowers RMS a little; re-aim until it lands in the window
+        gain += target_rms_db - acx_measure(tmp if gain == 0 else dst.with_suffix(".stage2.wav"))["rms_db"]
+        stage2 = dst.with_suffix(".stage2.wav")
         ffmpeg(
-            "-i", str(dst),
-            "-af", f"volume={target_rms_db - measured['rms_db']:.2f}dB,alimiter=limit=0.668:level=disabled",
-            "-c:a", "pcm_s16le", str(fix),
+            "-i", str(tmp),
+            "-af", f"volume={gain:.2f}dB,alimiter=limit={10 ** (LIMIT_DBFS / 20):.4f}:attack=5:release=50:level=disabled",
+            "-c:a", "pcm_f32le", str(stage2),
         )
-        fix.replace(dst)
-        measured = acx_measure(dst)
-    return measured
+        if abs(acx_measure(stage2)["rms_db"] - target_rms_db) <= 0.5:
+            break
+    speech, _ = sf.read(str(stage2), dtype="float64")
+    tmp.unlink(missing_ok=True)
+    stage2.unlink(missing_ok=True)
+
+    out = np.concatenate([np.zeros(int(head_s * sr)), speech, np.zeros(int(tail_s * sr))])
+    out = out + room_tone(out.size, sr)
+    out = np.clip(out, -(10 ** (LIMIT_DBFS / 20)), 10 ** (LIMIT_DBFS / 20))
+    sf.write(str(dst), out, sr, subtype="PCM_16")
+    return acx_measure(dst)
 
 
 def silence(seconds: float, sr: int) -> np.ndarray:

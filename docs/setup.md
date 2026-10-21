@@ -17,9 +17,9 @@ uv sync --locked           # installs the exact versions in uv.lock
 uv run python scripts/download_models.py core
 ```
 
-`core` downloads about 36 GB into `~/.cache/huggingface/hub`. `optional` adds the Qwen3
-CustomVoice and VoiceDesign models (9 GB). `bf16` adds full-precision MOSS 8B (17 GB,
-not recommended).
+`core` downloads about 15 GB into `~/.cache/huggingface/hub`: Qwen3-TTS 1.7B Base,
+CustomVoice and VoiceDesign (bf16), plus Whisper large-v3-turbo for quality checks.
+`moss` and `bf16` fetch the MOSS-TTS models used in the original comparison (not used now).
 
 ## Pinned direct dependencies
 

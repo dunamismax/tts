@@ -31,16 +31,19 @@ symlink to this repo, so both paths refer to the same folder.
 5. **Do not guess APIs.** Read the installed mlx-audio source
    (`.venv/lib/python3.12/site-packages/mlx_audio/tts/models/...`) and the model cards
    before changing generation code. Record what you learn in `docs/`.
-6. **Model memory budget.** The Mac has 32 GB; MLX's working-set limit is about 26.8 GB.
-   Do not adopt full-precision MOSS 8B (it swaps heavily; see `docs/benchmarks.md`).
-7. **Only clone voices the user owns or has permission to use.**
-8. Keep `README.md` written for a non-programmer. Put technical detail in `docs/`.
+6. **Model choice.** The workflow uses Qwen3-TTS 1.7B (bf16) only; the user chose it by ear
+   over MOSS-TTS (see `docs/qwen3-tuning.md`). Don't reintroduce MOSS without asking.
+   The Mac has 32 GB; MLX's working-set limit is about 26.8 GB.
+7. **Pronunciations** are plain-English respellings with CAPITALIZED stress
+   (`pronunciations.yaml`); Qwen3 does not read IPA.
+8. **Only clone voices the user owns or has permission to use.**
+9. Keep `README.md` written for a non-programmer. Put technical detail in `docs/`.
 
 ## Common commands
 
 ```bash
 uv sync --locked                                  # rebuild the environment exactly
 uv run python scripts/download_models.py core     # fetch model weights
-uv run python scripts/bench.py moss8b             # speed / memory benchmark
-uv run python scripts/ab_test.py report           # rebuild A/B results table
+uv run python scripts/finals.py render F3         # render one voice candidate
+uv run python scripts/finals.py report            # rebuild the candidates table
 ```

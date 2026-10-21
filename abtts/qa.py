@@ -34,6 +34,12 @@ _DATE_RE = re.compile(rf"\b(?:the\s+)?(\d{{1,2}})(?:st|nd|rd|th)?\s+(?:of\s+)?({
 _DATE_US_RE = re.compile(rf"\b({_MONTHS})\s+(?:the\s+)?(\d{{1,2}})(?:st|nd|rd|th)?\b", re.I)
 
 
+_ORDINAL_WORDS = {num2words(n, to="ordinal").replace("-", ""): num2words(n).replace("-", "") for n in range(1, 32)}
+_WORD_DATE_RE = re.compile(
+    rf"\b(?:the\s+)?({'|'.join(sorted(_ORDINAL_WORDS, key=len, reverse=True))})\s+(?:of\s+)?({_MONTHS})\b"
+)
+
+
 def _time_words(m: re.Match) -> str:
     hour, minute, ampm = (m.group(1), m.group(2), m.group(3)) if m.group(1) else (m.group(4), m.group(5), None)
     words = f"{num2words(int(hour))} {num2words(int(minute)) if int(minute) else ''}".strip()
@@ -64,7 +70,11 @@ def normalize_for_wer(text: str) -> str:
     text = re.sub(r"(?<=\w)[‐‑\-](?=\w)", "", text)
     text = re.sub(r"[‐-―\-]", " ", text)
     text = re.sub(r"['’]s\b", "s", text)
+    # Spelled-out dates ("the fourteenth of march") get the same form as digit dates.
+    text = _WORD_DATE_RE.sub(lambda m: f"{m.group(2)} {_ORDINAL_WORDS[m.group(1)]}", text)
     text = re.sub(r"\b([ap])\.\s?m\.", r"\1m", text)
+    # "two hundred and fifty" and "two hundred fifty" are the same number.
+    text = re.sub(r"\b(hundred|thousand|million)\s+and\s+", r"\1 ", text)
     text = re.sub(r"[^\w\s]", " ", text)
     words = [_EQUIVALENTS.get(w, w) for w in text.split()]
     return _join_compounds(words)

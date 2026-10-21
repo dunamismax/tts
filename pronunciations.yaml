@@ -1,0 +1,11 @@
+# Pronunciation fixes. Edit freely.
+#
+# Left side: the word exactly as it appears in the book (whole words only, case-sensitive).
+# Right side: how the narrator should say it, as a plain-English respelling.
+#   - Split syllables with hyphens and put the stressed syllable in CAPITALS.
+#   - Qwen3-TTS does not understand IPA symbols, so stick to ordinary letters.
+#
+# After editing, re-run the book: only chunks containing a changed word are regenerated.
+
+Aoife: Eefa
+Szczepańska: Shcheh-PAHN-ska
