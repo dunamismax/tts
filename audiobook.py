@@ -78,7 +78,8 @@ def show_chapters(project: Path, log):
         log(f"  {ch['number']:2d}. {ch['title']}  ({words:,} words, ~{words / 155:.0f} min)  chapters/{ch['file']}")
 
 
-def run_pipeline(project: Path, args, chapters: list[int] | None = None, preview: bool = False):
+def run_pipeline(project: Path, args, chapters: list[int] | None = None, preview: bool = False,
+                 rebuild_book: bool = False):
     log = Log(project)
     settings = P.load_settings(project, overrides(args))
     meta = yaml.safe_load((project / "book.yaml").read_text())
@@ -94,10 +95,15 @@ def run_pipeline(project: Path, args, chapters: list[int] | None = None, preview
         out_dir = project / "output" / "preview" if preview else None
         results = P.assemble(project, plan, settings, log=log, out_dir=out_dir)
         m4b = None
-        if not preview and not chapters:
-            m4b = P.make_m4b(project, results, settings, log=log)
         full_plan = P.build_plan(project, settings)
-        report = P.write_report(project, full_plan if not chapters else plan, results, settings, stats, m4b)
+        if not preview and (not chapters or rebuild_book):
+            if chapters:  # only rebuild the book file if every chapter is finished
+                results = P.assemble(project, full_plan, settings, log=log) if all(
+                    P.is_cached(project, c) for c in full_plan) else []
+            m4b = P.make_m4b(project, results, settings, log=log) if results else None
+        whole = not chapters or (rebuild_book and m4b)
+        report = P.write_report(project, full_plan if whole else plan, results, settings, stats, m4b,
+                                path=project / "output" / "preview" / "report.md" if preview else None)
         flagged = sum(1 for c in plan if (i := P.chunk_info(project, c)) and i["problems"])
         log(f"Report: {report}")
         if preview:
@@ -176,9 +182,7 @@ def cmd_redo(args):
         chunk = P.redo_chunk(project, cid, settings)
         chapters.add(chunk.chapter)
         print(f"{cid}: a new take will be generated (the old one stays in cache/).")
-    run_pipeline(project, args, sorted(chapters))
-    # Rebuild the full book outputs so the M4B includes the new takes.
-    run_pipeline(project, args)
+    run_pipeline(project, args, sorted(chapters), rebuild_book=True)
 
 
 def cmd_chapters(args):

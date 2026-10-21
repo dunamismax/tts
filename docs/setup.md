@@ -38,5 +38,20 @@ All transitive versions are locked in `uv.lock`.
 
 ## Folder layout
 
-`~/AudiobookTTS` → `~/github/tts` (symlink). Large working data stays in git-ignored
-folders inside it: `voices/`, `projects/`, `books/`, `ab_test/`, `logs/`, `.venv/`.
+`~/AudiobookTTS` → `~/github/tts` (symlink, created with `ln -s ~/github/tts ~/AudiobookTTS`).
+Working data stays in git-ignored folders inside it: `projects/`, `books/`, `ab_test/`,
+`logs/`, `.venv/`. In `voices/`, only the synthetic designed voices are tracked.
+
+## Disk space
+
+Hugging Face cache after the research phase: Qwen3 models + Whisper ≈ 15 GB (needed),
+MOSS-TTS models ≈ 38 GB and MOSS bf16 ≈ 17 GB (no longer used). To free the MOSS space:
+
+```bash
+uv run hf cache ls
+uv run hf cache rm model/luisarn/MOSS-TTS-v1.5-MLX-8bit model/OpenMOSS-Team/MOSS-TTS-v1.5 \
+  model/OpenMOSS-Team/MOSS-Audio-Tokenizer model/OpenMOSS-Team/MOSS-Audio-Tokenizer-v2 \
+  model/mlx-community/MOSS-TTS-Local-Transformer-v1.5-8bit
+```
+ Each book project needs roughly 1.5 GB per 10 hours of audio
+for the chunk cache, plus its outputs.

@@ -1,7 +1,7 @@
 [project]
 name = "audiobook-tts"
-version = "0.1.0"
-description = "Local, offline audiobook narration on Apple Silicon with mlx-audio"
+version = "1.0.0"
+description = "Local, offline audiobook narration on Apple Silicon with Qwen3-TTS and mlx-audio"
 readme = "README.md"
 requires-python = "==3.12.*"
 dependencies = [

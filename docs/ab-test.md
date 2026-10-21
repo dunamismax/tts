@@ -1,5 +1,8 @@
 # A/B listening test (Step 4)
 
+> **Historical.** The user preferred Qwen3-TTS (files 3a and 3b), which led to
+> [qwen3-tuning.md](qwen3-tuning.md).
+
 Rendered 2026-10-21 with `scripts/ab_test.py`. Audio is in `~/AudiobookTTS/ab_test/` (not in git).
 The passage (305 words, ~2 minutes) has dialogue with curly quotes, a 90-word sentence,
 a date ("Tuesday, the 14th of March 1923"), times ("7:45", "11:58 p.m."), currency ("£250"),

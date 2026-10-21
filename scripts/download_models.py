@@ -1,8 +1,9 @@
 """Download model weights into the normal Hugging Face cache.
 
-Usage: uv run python scripts/download_models.py [core|moss|bf16|all]
+Usage: uv run python scripts/download_models.py [core|fast|moss|bf16|all]
 
-core is everything the workflow uses (Qwen3-TTS + Whisper, about 15 GB). moss and bf16
+core is everything the workflow uses (Qwen3-TTS + Whisper, about 15 GB). fast is the
+optional 8-bit Qwen3-TTS Base (about 3 GB). moss and bf16
 are the MOSS-TTS models from the original comparison; they are no longer used.
 """
 
@@ -23,8 +24,9 @@ MOSS = [
     "OpenMOSS-Team/MOSS-Audio-Tokenizer-v2",
 ]
 BF16 = ["OpenMOSS-Team/MOSS-TTS-v1.5"]
+FAST = ["mlx-community/Qwen3-TTS-12Hz-1.7B-Base-8bit"]
 
-GROUPS = {"core": CORE, "moss": MOSS, "bf16": BF16, "all": CORE + MOSS + BF16}
+GROUPS = {"core": CORE, "fast": FAST, "moss": MOSS, "bf16": BF16, "all": CORE + FAST + MOSS + BF16}
 
 if __name__ == "__main__":
     group = sys.argv[1] if len(sys.argv) > 1 else "core"

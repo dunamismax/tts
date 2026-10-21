@@ -7,7 +7,6 @@ __pycache__/
 ab_test/
 projects/
 books/
-voices/
 output/
 logs/
 *.wav
@@ -18,3 +17,13 @@ logs/
 
 # macOS
 .DS_Store
+
+# Voices: personal clips stay private. Only the synthetic (designed) voices are shared.
+voices/*
+!voices/designmale/
+!voices/deepbaritone/
+!voices/britishmale/
+!voices/warmfemale/
+!voices/designfemale/
+voices/*/ref_48k_stereo.wav
+!voices/*/ref_24k_mono.wav

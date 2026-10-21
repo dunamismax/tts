@@ -1,5 +1,8 @@
 """Thin wrappers around mlx-audio TTS models.
 
+The audiobook workflow uses Qwen3-TTS only. The MOSS-TTS presets remain for the research
+scripts in scripts/ (benchmarks and the first A/B test).
+
 Every engine exposes the same call: synth(text, seed) -> (mono float32 numpy, sample_rate).
 Parameter names follow mlx-audio 0.6.1 (mlx_audio/tts/models/moss_tts/moss_tts.py and
 mlx_audio/tts/models/qwen3_tts/qwen3_tts.py).

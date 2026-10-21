@@ -58,7 +58,15 @@ def load_settings(project: Path | None = None, overrides: dict | None = None) ->
     settings = yaml.safe_load((ROOT / "config.yaml").read_text())
     if project and (project / "book.yaml").exists():
         settings = deep_merge(settings, yaml.safe_load((project / "book.yaml").read_text()).get("settings") or {})
-    return deep_merge(settings, overrides or {})
+    settings = deep_merge(settings, overrides or {})
+    # Built-in speakers (voice: preset:Ryan) live in the CustomVoice model, not the Base model.
+    if str(settings["voice"]).startswith("preset:") and "-Base" in settings["model"]:
+        settings["model"] = settings["model"].replace("-Base", "-CustomVoice")
+        settings.setdefault("instruct", PRESET_INSTRUCT)
+    return settings
+
+
+PRESET_INSTRUCT = "Calm, warm, measured audiobook narration with natural pauses."
 
 
 def load_pronunciations(project: Path | None = None) -> dict:
@@ -408,6 +416,12 @@ def make_m4b(project: Path, chapters: list[dict], settings: dict, log=print) -> 
         return None
     meta = yaml.safe_load((project / "book.yaml").read_text())
     out = project / "output" / f"{slugify(meta['title'])}.m4b"
+    inputs = [Path(c["wav"]) for c in chapters] + [project / "book.yaml"]
+    if meta.get("cover"):
+        inputs.append(project / meta["cover"])
+    if out.exists() and all(p.stat().st_mtime < out.stat().st_mtime for p in inputs if p.exists()):
+        log(f"M4B up to date: {out}")
+        return out
     lines = [";FFMETADATA1", f"title={meta['title']}", f"album={meta['title']}", f"artist={meta['author']}",
              f"album_artist={meta['author']}", "genre=Audiobook", ""]
     concat = ["ffconcat version 1.0"]
@@ -440,7 +454,7 @@ def make_m4b(project: Path, chapters: list[dict], settings: dict, log=print) -> 
 
 
 def write_report(project: Path, plan: list[Chunk], chapters: list[dict], settings: dict,
-                 run_stats: dict | None = None, m4b: Path | None = None) -> Path:
+                 run_stats: dict | None = None, m4b: Path | None = None, path: Path | None = None) -> Path:
     meta = yaml.safe_load((project / "book.yaml").read_text())
     infos = [(c, chunk_info(project, c)) for c in plan]
     done = [(c, i) for c, i in infos if i]
@@ -485,7 +499,8 @@ def write_report(project: Path, plan: list[Chunk], chapters: list[dict], setting
             wav, _ = cache_paths(project, c)
             lines += [f"### {c.id}: {'; '.join(i['problems'])}", "",
                       f"- Text: {c.text}", f"- Heard: {i['transcript']}", f"- File: `{wav}`", ""]
-    path = project / "report.md"
+    path = path or project / "report.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(lines) + "\n")
     return path
 

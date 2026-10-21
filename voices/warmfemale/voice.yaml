@@ -1,0 +1,13 @@
+name: warmfemale
+source: warmfemale_take1.wav
+transcript: It was late in the evening when the letter finally arrived. She turned
+  it over twice before opening it, as if the envelope itself might tell her something.
+  "Well," she said quietly, "I suppose we had better see what it says." Outside, the
+  rain had softened to a whisper, and somewhere down the lane a dog was barking at
+  nothing at all.
+seconds: 23.9
+files:
+  24k_mono: ref_24k_mono.wav
+warnings: []
+origin: Designed with Qwen3-TTS-12Hz-1.7B-VoiceDesign (synthetic voice, not a real
+  person); see docs/qwen3-tuning.md

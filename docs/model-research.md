@@ -1,5 +1,8 @@
 # Model research notes
 
+> **Historical.** This is the first research round. The workflow now uses Qwen3-TTS only
+> (see [qwen3-tuning.md](qwen3-tuning.md) and [final-candidates.md](final-candidates.md)). The Qwen3 API notes below are still accurate for mlx-audio 0.6.1.
+
 Verified on 2026-10-21 against mlx-audio **0.6.1** (released 2026-10-20) source and the
 Hugging Face model cards. Re-check these when upgrading mlx-audio.
 

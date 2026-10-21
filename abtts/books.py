@@ -408,7 +408,7 @@ def read_text(path: Path) -> Book:
                 and not re.search(r"[.!?]\s", stripped) and stripped[0].isupper()
                 and _looks_titled(stripped))
         )
-        if heading_like and not indented:
+        if heading_like and not indented and not re.match(r"^by\s", stripped, re.I):
             raw.append({"title": stripped, "paragraphs": []})
             contents_mode = False
             continue
@@ -422,8 +422,21 @@ def read_text(path: Path) -> Book:
             stripped = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", stripped)
         raw[-1]["paragraphs"].append(stripped)
 
-    book = Book(title=(title.group(1).strip() if title else path.stem),
-                author=(author.group(1).strip() if author else "Unknown"))
+    md_title = md_author = None
+    levels = [len(m.group(1)) for m in re.finditer(r"^(#{1,3})\s+", text, re.M)] if is_md else []
+    # Markdown with one "# Title" and "## Chapter" headings: the "#" heading is the book title,
+    # and a "By Someone" line right under it is the author.
+    if levels.count(1) == 1 and levels.count(2) >= 1:
+        h1 = re.search(r"^#\s+(.+)$", text, re.M).group(1).strip()
+        for i, ch in enumerate(raw):
+            if ch["title"] == h1:
+                md_title = h1
+                by = [p for p in ch["paragraphs"] if re.match(r"^by\s+\S", p, re.I)]
+                md_author = re.sub(r"^by\s+", "", by[0], flags=re.I).strip() if by else None
+                del raw[i]
+                break
+    book = Book(title=(title.group(1).strip() if title else md_title or path.stem),
+                author=(author.group(1).strip() if author else md_author or "Unknown"))
     book.chapters = finish_chapters(raw)
     return book
 

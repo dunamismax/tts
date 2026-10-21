@@ -5,10 +5,12 @@
 model: mlx-community/Qwen3-TTS-12Hz-1.7B-Base-bf16
 language: English
 
-# Narrator voice: a folder name inside voices/ (made with `audiobook.py voice add`).
+# Narrator voice: a folder name inside voices/ (see `audiobook.py voice list`), or a
+# Qwen3 built-in speaker written as preset:Ryan or preset:Aiden (the right model is
+# then picked automatically).
 voice: designmale
 
-# Sampling. These match the model card except temperature, which you picked by ear.
+# Sampling: the model card defaults. Temperature 0.9 is what you picked by ear (candidate F1).
 sampling:
   temperature: 0.9
   top_k: 50

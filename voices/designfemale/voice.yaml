@@ -1,0 +1,12 @@
+name: designfemale
+source: designfemale.wav
+transcript: There is a particular kind of quiet that settles over a house late at
+  night, when the last of the lights are out and the clocks seem louder than they
+  did during the day. It is in that quiet, I have always thought, that the best stories
+  are told.
+seconds: 13.8
+files:
+  24k_mono: ref_24k_mono.wav
+warnings: []
+origin: Designed with Qwen3-TTS-12Hz-1.7B-VoiceDesign (synthetic voice, not a real
+  person); see docs/qwen3-tuning.md

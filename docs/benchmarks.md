@@ -1,5 +1,8 @@
 # Benchmarks
 
+> **Historical.** Measured during model selection. For the chosen setup (Qwen3-TTS 1.7B with
+> QA) the production speed is about 0.85× real time; see [final-candidates.md](final-candidates.md).
+
 Machine: Apple M5 (10-core GPU), 32 GB, macOS 27.0.1, mlx 0.32.4, mlx-audio 0.6.1.
 Test: `scripts/bench.py` on six paragraphs (~300 words, ~1.5 minutes of speech), one
 paragraph per generation call, model default voice, fixed seed. Run on 2026-10-21.

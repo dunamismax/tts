@@ -15,10 +15,10 @@ TRIM = (
     "areverse"
 )
 
-# What each model's tokenizer expects (sample rate, channels).
+# What the model's tokenizer expects (sample rate, channels). Qwen3-TTS works at 24 kHz mono.
+# (Older voices also have ref_48k_stereo.wav, made for the MOSS-TTS Local model during testing.)
 FORMATS = {
-    "24k_mono": (24000, 1),  # MOSS-TTS v1.5 8B and Qwen3-TTS
-    "48k_stereo": (48000, 2),  # MOSS-TTS-Local-Transformer v1.5 (MOSS-Audio-Tokenizer-v2)
+    "24k_mono": (24000, 1),
 }
 
 
@@ -45,13 +45,13 @@ def prepare_voice(src: Path, name: str, transcript: str | None, voices_dir: Path
         dst = out_dir / f"ref_{label}.wav"
         ffmpeg("-i", str(trimmed), "-af", norm, "-ar", str(sr), "-ac", str(ch),
                "-c:a", "pcm_s16le", str(dst))
-        files[label] = str(dst)
+        files[label] = dst.name
     trimmed.unlink()
 
-    seconds = duration(files["24k_mono"])
+    seconds = duration(out_dir / files["24k_mono"])
     info = {
         "name": name,
-        "source": str(src),
+        "source": src.name,
         "transcript": transcript,
         "seconds": round(seconds, 1),
         "files": files,
@@ -70,13 +70,18 @@ def prepare_voice(src: Path, name: str, transcript: str | None, voices_dir: Path
 
 def load_voice(name_or_dir: str, voices_dir: Path) -> dict:
     path = Path(name_or_dir).expanduser()
-    if not path.exists():
+    if not (path / "voice.yaml").exists():
         path = voices_dir / name_or_dir
-    return yaml.safe_load((path / "voice.yaml").read_text())
+    if not (path / "voice.yaml").exists():
+        raise FileNotFoundError(f"No voice named '{name_or_dir}' in {voices_dir} (see `audiobook.py voice list`).")
+    info = yaml.safe_load((path / "voice.yaml").read_text())
+    # Stored paths may come from another machine or folder; the files sit next to voice.yaml.
+    info["files"] = {k: str(path / Path(v).name) for k, v in info["files"].items() if (path / Path(v).name).exists()}
+    return info
 
 
 def ref_for_model(voice: dict, family_repo: str) -> str:
     """Pick the reference file whose format matches the model."""
-    if "local-transformer" in family_repo.lower():
+    if "local-transformer" in family_repo.lower() and "48k_stereo" in voice["files"]:
         return voice["files"]["48k_stereo"]
     return voice["files"]["24k_mono"]
