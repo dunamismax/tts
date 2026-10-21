@@ -100,6 +100,16 @@ without touching the old file.
 Long runs start `caffeinate -i -s -m -w <pid>` so the Mac doesn't sleep. Progress lines show
 percent done, time left and the finish time, extrapolated from this run's throughput.
 
+## Voice delivery (per voice)
+
+A voice's `voice.yaml` may contain `delivery:` (temperature, `pause_stretch`, `pitch`,
+`tempo`, `eq`), fitted so narration matches the voice's demo clip (`docs/voice-matching.md`).
+The temperature feeds generation unless a book or the command line sets one. The rest is
+applied after generation: pauses inside each chunk are lengthened during chapter assembly,
+and pitch, tempo and the tone EQ are applied at the start of mastering. Because none of
+this changes the chunk cache key, changing it only re-masters chapters (the chapter manifest
+includes the delivery values).
+
 ## Mastering (`abtts/audio.py`)
 
 Per chapter: resample to 44.1 kHz mono (ffmpeg's swr, 64-tap), 70 Hz high-pass, gain to

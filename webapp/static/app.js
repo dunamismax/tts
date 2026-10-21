@@ -854,7 +854,8 @@ function voiceCard(v, redraw) {
   const kindBadge = { designed: h("span", { class: "badge", text: "Designed" }), clone: h("span", { class: "badge accent", text: "Your clip" }), preset: h("span", { class: "badge", text: "Built-in" }) }[v.kind];
   return h("div", { class: "card voice" + (v.default ? " is-default" : "") },
     h("div", { class: "voice-head" }, avatarEl(v.name),
-      h("div", { class: "grow" }, h("div", { class: "voice-name", text: v.name }), h("div", { class: "row", style: { gap: "6px", marginTop: "3px" } }, kindBadge, v.default ? h("span", { class: "badge success" }, icon("star", "i-sm"), "Default") : null)),
+      h("div", { class: "grow" }, h("div", { class: "voice-name", text: v.name }), h("div", { class: "row", style: { gap: "6px", marginTop: "3px" } }, kindBadge, v.default ? h("span", { class: "badge success" }, icon("star", "i-sm"), "Default") : null,
+        v.matched ? h("span", { class: "badge accent", title: "Narration is tuned to sound like this sample: same pace, pauses and tone" }, icon("check", "i-sm"), "Matches sample") : null)),
       v.sample ? playButton(v.sample, v.name, "Voice sample", null, { big: true, label: "Play sample" }) : null),
     h("div", { class: "voice-desc", text: v.description || (v.transcript ? `“${v.transcript}”` : "") }),
     v.sample ? wave : null,

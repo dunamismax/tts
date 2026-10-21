@@ -326,6 +326,9 @@ def summarize(slug: str, detail: bool = False) -> dict:
     rate = chars_done / gen if gen > 30 else 14 / 0.9
     audio_done = sum(infos[c.key]["seconds"] for c in done)
     est_audio = audio_done / chars_done * sum(len(c.text) for c in plan) if chars_done > 500 else words / 155 * 60
+    tempo = float(settings.get("delivery", {}).get("tempo") or 1.0)
+    if chars_done > 500:
+        est_audio /= tempo  # cached chunks are pre-tempo; the finished audio is slower
     m4b = next(iter(sorted((project / "output").glob("*.m4b"))), None) if (project / "output").exists() else None
     job = QUEUE.active_for(slug)
     if job and job.status == "running":
@@ -736,6 +739,7 @@ def voices():
             "id": vf.parent.name, "name": vf.parent.name, "description": v.get("description") or "",
             "seconds": v.get("seconds"), "transcript": v.get("transcript"), "kind": "designed" if v.get("origin") else "clone",
             "sample": media_url(ref) if ref.exists() else None, "default": vf.parent.name == default,
+            "matched": bool(v.get("delivery")),
         })
     for name, desc in PRESETS.items():
         vid = f"preset:{name}"

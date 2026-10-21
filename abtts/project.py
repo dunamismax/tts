@@ -56,9 +56,18 @@ def deep_merge(base: dict, override: dict) -> dict:
 
 def load_settings(project: Path | None = None, overrides: dict | None = None) -> dict:
     settings = yaml.safe_load((ROOT / "config.yaml").read_text())
+    book = {}
     if project and (project / "book.yaml").exists():
-        settings = deep_merge(settings, yaml.safe_load((project / "book.yaml").read_text()).get("settings") or {})
+        book = yaml.safe_load((project / "book.yaml").read_text()).get("settings") or {}
+        settings = deep_merge(settings, book)
     settings = deep_merge(settings, overrides or {})
+    # A voice can carry delivery settings fitted to its demo clip (scripts/delivery_fit.py):
+    # temperature, tempo, pause stretch and a tone EQ. A temperature set for the book or on
+    # the command line still wins.
+    settings["delivery"] = voice_delivery(settings["voice"])
+    explicit_temp = "temperature" in (book.get("sampling") or {}) or "temperature" in ((overrides or {}).get("sampling") or {})
+    if settings["delivery"].get("temperature") is not None and not explicit_temp:
+        settings["sampling"]["temperature"] = settings["delivery"]["temperature"]
     # Built-in speakers (voice: preset:Ryan) live in the CustomVoice model, not the Base model.
     if str(settings["voice"]).startswith("preset:") and "-Base" in settings["model"]:
         settings["model"] = settings["model"].replace("-Base", "-CustomVoice")
@@ -67,6 +76,16 @@ def load_settings(project: Path | None = None, overrides: dict | None = None) ->
 
 
 PRESET_INSTRUCT = "Calm, warm, measured audiobook narration with natural pauses."
+
+
+def voice_delivery(voice: str) -> dict:
+    """Delivery settings stored with a voice (empty for presets and unfitted voices)."""
+    if str(voice).startswith("preset:"):
+        return {}
+    path = VOICES / str(voice) / "voice.yaml"
+    if not path.exists():
+        return {}
+    return (yaml.safe_load(path.read_text()) or {}).get("delivery") or {}
 
 
 def load_pronunciations(project: Path | None = None) -> dict:
@@ -358,16 +377,24 @@ def generate(project: Path, plan: list[Chunk], settings: dict, log=print, event=
 # ----------------------------------------------------------------------------- assembly
 
 
-def chapter_audio(project: Path, chunks: list[Chunk]) -> tuple[np.ndarray, int] | None:
+def chapter_audio(project: Path, chunks: list[Chunk], delivery: dict | None = None) -> tuple[np.ndarray, int] | None:
+    """Join a chapter's chunks with the configured pauses, applying the voice's pause stretch.
+
+    The voice's tempo is applied later in mastering, so the pauses inserted here are
+    pre-scaled by it and come out at exactly the configured length.
+    """
+    delivery = delivery or {}
+    tempo = float(delivery.get("tempo") or 1.0)
+    stretch = float(delivery.get("pause_stretch") or 1.0)
     pieces, sr = [], None
     for i, c in enumerate(chunks):
         wav, _ = cache_paths(project, c)
         if not wav.exists():
             return None
         audio, sr = sf.read(str(wav), dtype="float32")
-        pieces.append(audio)
+        pieces.append(A.stretch_pauses(audio, sr, stretch))
         if i < len(chunks) - 1:
-            pieces.append(A.silence(c.pause_after, sr))
+            pieces.append(A.silence(c.pause_after * tempo, sr))
     return np.concatenate(pieces), sr
 
 
@@ -389,14 +416,16 @@ def assemble(project: Path, plan: list[Chunk], settings: dict, log=print, out_di
         name = output_name(number, titles.get(number, f"Chapter {number}"))
         wav_out = out_dir / "wav" / f"{name}.wav"
         mp3_out = out_dir / "mp3" / f"{name}.mp3"
+        delivery = {k: v for k, v in settings.get("delivery", {}).items() if k in ("tempo", "pitch", "pause_stretch", "eq")}
         manifest = {"chunks": [c.key for c in chunks], "pauses": [c.pause_after for c in chunks],
-                    "mastering": m, "bitrate": settings["output"]["mp3_bitrate"], "title": meta["title"]}
+                    "mastering": m, "delivery": delivery, "bitrate": settings["output"]["mp3_bitrate"],
+                    "title": meta["title"]}
         man_path = out_dir / "wav" / f".{number:02d}.manifest.json"
         if wav_out.exists() and mp3_out.exists() and man_path.exists() and json.loads(man_path.read_text()) == manifest:
             results.append(json.loads((out_dir / "wav" / f".{number:02d}.measure.json").read_text()))
             continue
         event({"type": "mastering", "chapter": number})
-        joined = chapter_audio(project, chunks)
+        joined = chapter_audio(project, chunks, delivery)
         if joined is None:
             missing = sum(not is_cached(project, c) for c in chunks)
             log(f"Chapter {number}: {missing} chunk(s) missing, not assembled.")
@@ -407,7 +436,8 @@ def assemble(project: Path, plan: list[Chunk], settings: dict, log=print, out_di
         raw.parent.mkdir(parents=True, exist_ok=True)
         sf.write(str(raw), audio, sr, subtype="FLOAT")
         measured = A.master_acx(raw, wav_out, head_s=m["head_seconds"], tail_s=m["tail_seconds"],
-                                target_rms_db=m["target_rms_db"])
+                                target_rms_db=m["target_rms_db"], eq=delivery.get("eq"),
+                                tempo=delivery.get("tempo"), pitch=delivery.get("pitch"))
         raw.unlink()
         mp3_out.parent.mkdir(parents=True, exist_ok=True)
         A.ffmpeg("-i", str(wav_out), "-c:a", "libmp3lame", "-b:a", settings["output"]["mp3_bitrate"],

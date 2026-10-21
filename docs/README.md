@@ -13,6 +13,7 @@ setup was chosen, in the order it happened.
 | [qwen3-tuning.md](qwen3-tuning.md) | After the user picked Qwen3: normalization, temperature, chunk size, presets, pronunciation |
 | [final-candidates.md](final-candidates.md) | The 8 production-pipeline candidates; **F1 was chosen** |
 | [chunk-length.md](chunk-length.md) | Why chunks are at most 500 characters |
+| [voice-matching.md](voice-matching.md) | Making British Male's narration match its demo clip (tempo, pitch, pauses, tone) |
 
 ## Decisions at a glance
 
@@ -21,6 +22,7 @@ setup was chosen, in the order it happened.
 | Model | Qwen3-TTS-12Hz-1.7B-Base, bf16 (mlx-community) | Sounded clearly better than MOSS-TTS v1.5 to the user; largest Qwen3-TTS |
 | Voice | `britishmale` reference clip, cloned | User's pick: refined British (RP) male, smooth and mellow (replaced `designmale`, the F1 voice) |
 | Temperature | 0.9 (model card default) | User's pick (F1); kept with the new voice |
+| Delivery | British Male: tempo 0.88, pitch −0.5 st, pauses ×1.15, tone EQ | Matches the demo clip's pace and tone (voice-matching.md) |
 | Text | Numbers, dates, money, abbreviations spelled out | Fixes preset voices, harmless for clones |
 | Chunks | Paragraphs, at most 500 characters, never mid-sentence | See chunk-length.md |
 | QA | Whisper large-v3-turbo, WER > 8% or abnormal pace → up to 3 retries | Catches skips, repeats, garbles |

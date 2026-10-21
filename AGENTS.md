@@ -49,6 +49,10 @@ programmer and uses it through `README.md`.
 7. **Pronunciations** are plain-English respellings with CAPITALIZED stress; Qwen3 does not read IPA.
 8. **Cache keys.** Anything that changes generated audio must be part of the chunk key in
    `project.build_plan`, or bump `CACHE_VERSION`. Otherwise resumed books mix old and new audio.
+   Post-processing (a voice's `delivery:` pause stretch, pitch, tempo and EQ; mastering) belongs in
+   the chapter manifest in `project.assemble` instead, so changes only re-master.
+   British Male's `delivery:` was fitted to its demo clip at the user's request
+   (`docs/voice-matching.md`); keep it unless they ask.
 9. **Only clone voices the user owns or has permission to use.**
 10. Keep `README.md` written for a non-programmer. Put technical detail in `docs/`.
 11. **The web studio is the primary interface.** New features go into both the CLI (the engine)

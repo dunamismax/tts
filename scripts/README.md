@@ -14,6 +14,10 @@ mlx-audio upgrade). Run them from the repo root with `uv run python scripts/<nam
 | `design_voices.py` | Create narrator voices from text descriptions (Qwen3 VoiceDesign) | `voices/` |
 | `finals.py` | The 8 production-pipeline candidates | `docs/final-candidates.md` |
 | `chunk_length_test.py` | Reliability vs chunk size on real book text | `docs/chunk-length.md` |
+| `voice_match.py` | Pace, pauses and pitch (YIN) of narration vs a voice's demo clip; temperature sweep | `docs/voice-matching.md` |
+| `ltas.py` | Average-spectrum (tone) comparison and EQ curve fitting | `docs/voice-matching.md` |
+| `delivery_test.py` | Cloning vs direct VoiceDesign narration against the demo | `docs/voice-matching.md` |
+| `delivery_fit.py` | Fits tempo, pitch, pause stretch and tone EQ; writes `delivery:` to the voice | `docs/voice-matching.md` |
 
 Audio from these goes to `ab_test/` (git-ignored). `bench.py` and `ab_test.py` need the
 MOSS models (`download_models.py moss`), which the main workflow no longer uses.

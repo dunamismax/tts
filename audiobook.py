@@ -224,15 +224,19 @@ def cmd_say(args):
     chunks = [c for p in paragraphs for c in chunk_paragraph(
         normalize_for_tts(p, numbers=t["expand_numbers"], abbreviations=t["expand_abbreviations"],
                           american=t["american_numbers"], pronunciations=pron), settings["chunking"]["max_chars"])]
+    delivery = settings.get("delivery", {})
+    tempo = float(delivery.get("tempo") or 1.0)
     for n, c in enumerate(chunks, 1):
         audio, sr = engine.synth(c, seed=settings["seed"])
-        pieces += [trim_edges(audio, sr), A.silence(settings["pauses"]["paragraph"], sr)]
+        audio = A.stretch_pauses(trim_edges(audio, sr), sr, float(delivery.get("pause_stretch") or 1.0))
+        pieces += [audio, A.silence(settings["pauses"]["paragraph"] * tempo, sr)]
         log.event({"type": "chunk", "n": n, "todo": len(chunks), "pct": round(100 * n / len(chunks), 1)})
     out = Path(args.out).expanduser()
     out.parent.mkdir(parents=True, exist_ok=True)
     raw = out.with_suffix(".raw.wav")
     sf.write(str(raw), np.concatenate(pieces[:-1]) if pieces else np.zeros(sr, dtype="float32"), sr, subtype="FLOAT")
-    A.master_acx(raw, out.with_suffix(".wav"), head_s=0.2, tail_s=0.4, target_rms_db=settings["mastering"]["target_rms_db"])
+    A.master_acx(raw, out.with_suffix(".wav"), head_s=0.2, tail_s=0.4, target_rms_db=settings["mastering"]["target_rms_db"],
+                 eq=delivery.get("eq"), tempo=delivery.get("tempo"), pitch=delivery.get("pitch"))
     raw.unlink()
     if out.suffix.lower() == ".mp3":
         A.ffmpeg("-i", str(out.with_suffix(".wav")), "-c:a", "libmp3lame", "-b:a", "192k", str(out))

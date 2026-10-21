@@ -11,4 +11,30 @@ files:
 warnings: []
 origin: Designed with Qwen3-TTS-12Hz-1.7B-VoiceDesign (synthetic voice, not a real
   person); see docs/qwen3-tuning.md
-description: Refined British (RP) male in his fifties. Smooth, mellow and intimate. Your pick.
+description: Refined British (RP) male in his fifties. Smooth, mellow and intimate.
+  Your pick.
+delivery:
+  temperature: 0.9
+  tempo: 0.88
+  pitch: -0.5
+  pause_stretch: 1.15
+  eq:
+  - - 87
+    - 1.4
+  - - 177
+    - 1.27
+  - - 354
+    - -0.4
+  - - 707
+    - -0.0
+  - - 1414
+    - 1.7
+  - - 2828
+    - 3.53
+  - - 4899
+    - 4.73
+  - - 6928
+    - 6.23
+  - - 9381
+    - 8.0
+  note: Fitted by scripts/delivery_fit.py so narration matches this voice's demo clip.

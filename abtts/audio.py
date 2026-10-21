@@ -97,10 +97,77 @@ def room_tone(n: int, sr: int, level_db: float = ROOM_TONE_DB, seed: int = 7) ->
     return (pink * 10 ** (level_db / 20)).astype(np.float64)
 
 
-def master_acx(src: Path, dst: Path, head_s: float, tail_s: float, target_rms_db: float = -20.0) -> dict:
+def stretch_pauses(audio: np.ndarray, sr: int, factor: float, min_pause: float = 0.12,
+                   threshold_db: float = -40.0) -> np.ndarray:
+    """Lengthen the narrator's own pauses (commas, sentence ends) inside a chunk by `factor`.
+
+    Quiet runs of at least min_pause seconds, measured on 10 ms frames relative to the
+    chunk's loud speech, get extra silence inserted in their middle. Leading and trailing
+    silence is left alone (the pipeline sets those pauses itself).
+    """
+    if factor <= 1.001 or audio.size == 0:
+        return audio
+    hop = max(1, int(0.01 * sr))
+    n = audio.size // hop
+    if n < 3:
+        return audio
+    rms = np.sqrt(np.mean(audio[: n * hop].reshape(n, hop) ** 2, axis=1) + 1e-12)
+    quiet = 20 * np.log10(rms) < 20 * np.log10(np.percentile(rms, 95) + 1e-12) + threshold_db
+    loud = np.nonzero(~quiet)[0]
+    if loud.size == 0:
+        return audio
+    first, last = loud[0], loud[-1]
+    pieces, cursor, i = [], 0, first
+    while i <= last:
+        if quiet[i]:
+            j = i
+            while j <= last and quiet[j]:
+                j += 1
+            length = (j - i) * hop
+            if length >= min_pause * sr:
+                mid = (i * hop + j * hop) // 2
+                pieces.append(audio[cursor:mid])
+                pieces.append(np.zeros(int(length * (factor - 1.0)), dtype=audio.dtype))
+                cursor = mid
+            i = j
+        else:
+            i += 1
+    pieces.append(audio[cursor:])
+    return np.concatenate(pieces)
+
+
+def eq_filter(points: list | None) -> str:
+    """ffmpeg filter for a smooth tone curve. points: [[freq_hz, gain_db], ...]."""
+    if not points:
+        return ""
+    entries = ";".join(f"entry({float(f):g},{float(g):.2f})" for f, g in sorted(points))
+    return f"firequalizer=gain_entry='{entries}':scale=linlog:zero_phase=on,"
+
+
+def tempo_filter(tempo: float | None, pitch: float | None = None, sr: int = 24000) -> str:
+    """Speed and pitch change. tempo 0.9 = 10% slower; pitch in semitones (-1 = one lower).
+
+    A pitch change plays the audio at a different rate (asetrate), which also changes speed
+    by the same ratio; atempo then makes up the rest of the requested tempo. Lowering pitch
+    therefore needs less time-stretching, which keeps the sound cleaner.
+    """
+    tempo = float(tempo or 1.0)
+    ratio = 2 ** (float(pitch or 0.0) / 12)
+    parts = []
+    if abs(ratio - 1.0) > 1e-4:
+        parts.append(f"asetrate={round(sr * ratio)},aresample={sr}")
+    remaining = tempo / ratio
+    if abs(remaining - 1.0) > 1e-3:
+        parts.append(f"atempo={max(0.5, min(2.0, remaining)):.4f}")
+    return ",".join(parts) + "," if parts else ""
+
+
+def master_acx(src: Path, dst: Path, head_s: float, tail_s: float, target_rms_db: float = -20.0,
+               eq: list | None = None, tempo: float | None = None, pitch: float | None = None) -> dict:
     """Master one chapter WAV to ACX specs and return the measured values.
 
-    Steps: 44.1 kHz mono with a gentle 70 Hz high-pass, gain so the overall RMS lands
+    Steps: optional tone-match EQ and tempo (per voice, see voices/<name>/voice.yaml),
+    44.1 kHz mono with a gentle 70 Hz high-pass, gain so the overall RMS lands
     on target_rms_db, a look-ahead limiter at -3.5 dBFS, then head/tail padding and
     a -70 dB pink-noise room tone under everything. Output is 16-bit 44.1 kHz mono.
     """
@@ -108,7 +175,8 @@ def master_acx(src: Path, dst: Path, head_s: float, tail_s: float, target_rms_db
     tmp = dst.with_suffix(".stage1.wav")
     ffmpeg(
         "-i", str(src),
-        "-af", "aresample=44100:filter_size=64:cutoff=0.98,highpass=f=70",
+        "-af", f"{tempo_filter(tempo, pitch, sf.info(str(src)).samplerate)}{eq_filter(eq)}"
+               "aresample=44100:filter_size=64:cutoff=0.98,highpass=f=70",
         "-ar", str(sr), "-ac", "1", "-c:a", "pcm_f32le", str(tmp),
     )
     gain = 0.0
