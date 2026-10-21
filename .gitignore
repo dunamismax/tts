@@ -1,0 +1,20 @@
+# Python / uv
+.venv/
+__pycache__/
+*.pyc
+
+# Large or personal working data (lives in ~/AudiobookTTS, which links here)
+ab_test/
+projects/
+books/
+voices/
+output/
+logs/
+*.wav
+*.mp3
+*.m4b
+*.m4a
+*.flac
+
+# macOS
+.DS_Store

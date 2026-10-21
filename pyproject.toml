@@ -1,0 +1,19 @@
+[project]
+name = "audiobook-tts"
+version = "0.1.0"
+description = "Local, offline audiobook narration on Apple Silicon with mlx-audio"
+readme = "README.md"
+requires-python = "==3.12.*"
+dependencies = [
+    "beautifulsoup4==4.15.0",
+    "ebooklib==0.20",
+    "jiwer==4.0.0",
+    "mlx-audio==0.6.1",
+    "num2words==0.5.14",
+    "pymupdf==2.0",
+    "pyyaml==6.0.3",
+    "soundfile==0.14.0",
+]
+
+[tool.uv]
+package = false
